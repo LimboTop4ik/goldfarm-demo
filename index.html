@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<title>GoldFarm Demo</title>
+<style>
+body {
+  font-family: Arial;
+  background: #111;
+  color: white;
+  text-align: center;
+  transition: 0.3s;
+}
+.light {
+  background: #f4f4f4;
+  color: black;
+}
+button {
+  padding: 10px 15px;
+  margin: 5px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+}
+.case-btn { background: gold; }
+.sell-btn { background: rgb(255, 255, 255); color: black; }
+.theme-btn { background: #444; color: white; }
+.card {
+  background: #222;
+  padding: 10px;
+  margin: 5px;
+  border-radius: 10px;
+  display: inline-block;
+}
+.light .card {
+  background: #ddd;
+}
+input {
+  padding: 8px;
+  margin: 5px;
+}
+#spinDisplay {
+  font-size: 22px;
+  margin: 15px;
+  min-height: 30px;
+}
+</style>
+</head>
+<body>
+
+<h1>GoldFarm Demo</h1>
+
+<div id="auth">
+  <input id="username" placeholder="Введите имя">
+  <button onclick="register()">Регистрация / Вход</button>
+</div>
+
+<div id="app" style="display:none;">
+  <h2 id="welcome"></h2>
+  <p>Баланс: <span id="balance"></span> 💰</p>
+
+  <button class="case-btn" onclick="openCase()">Открыть fable кейс (100)</button>
+  <button class="theme-btn" onclick="toggleTheme()">Сменить тему</button>
+
+  <div id="spinDisplay"></div>
+
+  <h3>Инвентарь</h3>
+  <div id="inventory"></div>
+</div>
+
+<script>
+let user = null;
+
+const items = [
+  { name: "G22 'Starfall'", value: 0.6 , chance: 0.1325 },
+  { name: "Desert Eagle 'Ace'", value: 0.5, chance: 0.1325 },
+  { name: "F/S 'Tactical'", value: 0.55, chance: 0.1325 },
+  { name: "M110 'Cyber'", value: 0.45, chance: 0.1325 },
+  { name: "USP 'Pisces'", value: 3.2, chance: 0.1 },
+  { name: "UMP45 'Cerberus'", value: 2.75, chance: 0.1 },
+  { name: "FN FAL 'Tactical'", value: 3, chance: 0.1 },
+  { name: "TEC-9 'Fable'", value: 16, chance: 0.05 },
+  { name: "MP7 'Lich'", value: 16.3, chance: 0.05 },
+  { name: "M4 'Lizard'", value: 18.7, chance: 0.05 },
+  { name: "Butterfly 'Legacy'", value: 2050, chance: 0.005 },
+  { name: "Butterfly 'Dragon glass'", value: 1850, chance: 0.005 },
+  { name: "Butterfly 'Black widow'", value: 1730, chance: 0.005 },
+  { name: "Butterfly 'Starfall'", value: 1610, chance: 0.005 }
+];
+
+function register() {
+  const name = document.getElementById("username").value;
+  if (!name) return alert("Введите имя");
+
+  if (!localStorage.getItem(name)) {
+    const newUser = {
+      balance: 5000,
+      inventory: []
+    };
+    localStorage.setItem(name, JSON.stringify(newUser));
+  }
+
+  user = name;
+  document.getElementById("auth").style.display = "none";
+  document.getElementById("app").style.display = "block";
+  document.getElementById("welcome").innerText = "Привет, " + user;
+  updateUI();
+}
+
+function getUserData() {
+  return JSON.parse(localStorage.getItem(user));
+}
+
+function saveUserData(data) {
+  localStorage.setItem(user, JSON.stringify(data));
+}
+
+function updateUI() {
+  const data = getUserData();
+  document.getElementById("balance").innerText = data.balance;
+
+  const inventoryDiv = document.getElementById("inventory");
+  inventoryDiv.innerHTML = "";
+
+  data.inventory.forEach((item, index) => {
+    const div = document.createElement("div");
+    div.className = "card";
+    div.innerHTML = `
+      ${item.name} (${item.value})
+      <br>
+      <button class="sell-btn" onclick="sellItem(${index})">Продать</button>
+    `;
+    inventoryDiv.appendChild(div);
+  });
+}
+
+async function openCase() {
+  const data = getUserData();
+  const button = document.querySelector(".case-btn");
+  const spinDisplay = document.getElementById("spinDisplay");
+
+  if (data.balance < 100) return alert("Недостаточно средств");
+
+  data.balance -= 100;
+  saveUserData(data);
+  updateUI();
+
+  button.disabled = true;
+  button.innerText = "Кейс крутится...";
+
+  // Анимация прокрутки
+  let spinInterval = setInterval(() => {
+    const randomItem = items[Math.floor(Math.random() * items.length)];
+    spinDisplay.innerText = randomItem.name;
+  }, 100);
+
+  // Ждём 3 секунды
+  await new Promise(resolve => setTimeout(resolve, 3000));
+
+  clearInterval(spinInterval);
+
+  // Настоящий расчёт по шансам
+  const rand = Math.random();
+  let cumulative = 0;
+  let wonItem = null;
+
+  for (let item of items) {
+    cumulative += item.chance;
+    if (rand <= cumulative) {
+      wonItem = item;
+      break;
+    }
+  }
+
+  spinDisplay.innerText = "🎉 Выпало: " + wonItem.name;
+
+  data.inventory.push(wonItem);
+  saveUserData(data);
+
+  button.disabled = false;
+  button.innerText = "Открыть fable кейс (100)";
+
+  updateUI();
+}
+
+function sellItem(index) {
+  const data = getUserData();
+  data.balance += data.inventory[index].value;
+  data.inventory.splice(index, 1);
+  saveUserData(data);
+  updateUI();
+}
+
+function toggleTheme() {
+  document.body.classList.toggle("light");
+}
+</script>
+
+</body>
+</html>
